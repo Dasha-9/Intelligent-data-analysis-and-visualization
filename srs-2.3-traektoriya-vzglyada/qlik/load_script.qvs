@@ -1,0 +1,22 @@
+// Скрипт загрузки для полного датасета iavd_incidents_raw_target.parquet
+// Вставить вместо строки LOAD * ... (строки SET в начале оставить)
+Incidents:
+LOAD
+    EntityId,
+    Dual([Критичность],
+         Match([Критичность],'Низкая','Средняя','Высокая','Критическая'))  as [Критичность],
+    [Вердикт],
+    If([Вердикт]='Не указан', 1, 0)                                         as [НетВердикта],
+    [Количество инцидентов]                                                  as [Алертов],
+    [Тип инцидента],
+    src, dst, suser,
+    [Правило корреляции SIEM],
+    ConvertToLocalTime([Создан], 'GMT+03:00')                                as [СозданМСК],
+    Date(Floor(ConvertToLocalTime([Создан], 'GMT+03:00')))                   as [ДатаСмены],
+    Hour(ConvertToLocalTime([Создан], 'GMT+03:00'))                          as [ЧасМСК],
+    If(Match([Вердикт],'Не указан','False Positive','Дубликат','Решён','Не решён') = 0,
+       '· ' & [Вердикт],
+       Pick(Match([Вердикт],'Не указан','False Positive','Дубликат','Решён','Не решён'),
+            '○ нет', '● FP', '⊘ дубль', '✓ решён', '⊖ не решён'))           as [ВердиктЗнак]
+FROM [lib://MyParquetFolder/iavd_incidents_raw_target.parquet]
+(parquet);
