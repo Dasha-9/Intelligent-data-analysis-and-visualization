@@ -1,0 +1,6 @@
+.kpi { background:#F3F5F8; border-radius:8px; padding:10px 18px; }
+.kpi_title { color:#6E7781; font-size:15px; }
+.kpi_val { font-size:34px; font-weight:700; color:#1F2328; }
+.kpi_red { font-size:34px; font-weight:700; color:#CF222E; }
+.crit { color:#CF222E !important; font-weight:600; }
+.muted { color:#6E7781; }
