@@ -1,0 +1,38 @@
+// Приложение iavd_ml.qvf · СРС 3.1 и 3.2 · скрипт загрузки (датасет iavd_ml_dataset.parquet)
+// Вставить после строк SET. Подключение – lib://MyParquetFolder (папка с parquet).
+// Оценка – доля реальных инцидентов у правила SIEM в обучении (до 04.09.2025 МСК), сглаженная к общей доле.
+// Время в parquet – UTC, поэтому граница 04.09.2025 00:00 МСК записана как 03.09.2025 21:00.
+
+ML:
+LOAD
+    EntityId,
+    If(Match([Вердикт],'Решён','Не решён'), 1, 0)                          as y,
+    If([Дата создания] < MakeDate(2025,9,3) + 21/24, 'обучение', 'проверка') as Часть,
+    If(Len([Правило корреляции SIEM]) = 0, '(нет правила)', [Правило корреляции SIEM]) as Правило
+FROM [lib://MyParquetFolder/iavd_ml_dataset.parquet] (parquet)
+Where Match([Вердикт], 'False Positive', 'Решён', 'Не решён');
+
+Tmp: LOAD Avg(y) as Prior Resident ML Where Часть = 'обучение';
+LET vPrior = Peek('Prior', 0, 'Tmp');
+DROP TABLE Tmp;
+
+ScoreMap:
+Mapping LOAD Правило, (Sum(y) + 20 * $(#vPrior)) / (Count(y) + 20)
+Resident ML Where Часть = 'обучение' Group By Правило;
+
+Test:
+NoConcatenate
+LOAD EntityId, y, Правило, ApplyMap('ScoreMap', Правило, $(#vPrior)) as Оценка
+Resident ML Where Часть = 'проверка';
+DROP TABLE ML;
+
+// пороги для кривой (отдельная таблица, ни с чем не связана)
+Пороги: LOAD (RecNo() - 1) / 100 as Порог AutoGenerate 71;
+
+SET vTau = 0.11;
+SET vBeta = 2;
+
+// СРС 3.2: точные пороги (все значения оценки + 0) и соотношение цен k
+ПорогиТочные: LOAD DISTINCT Оценка as ПорогТ Resident Test;
+Concatenate (ПорогиТочные) LOAD 0 as ПорогТ AutoGenerate 1;
+SET vK = 20;
