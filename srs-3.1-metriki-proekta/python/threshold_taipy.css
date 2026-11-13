@@ -1,0 +1,12 @@
+body, .taipy-gui { background: #ffffff !important; }
+.MuiPaper-root.taipy-chart { box-shadow: none !important; }
+h1 { font-size: 24px !important; margin: 4px 0 2px 0 !important; color: #1F2328; }
+h3 { font-size: 15px !important; margin: 14px 0 0 0 !important; color: #1F2328; }
+.q { color: #6E7781; font-size: 13px; display: block; margin-bottom: 8px; }
+.ctl { align-items: center; margin-bottom: 10px; }
+.kpi { background: #F6F8FA; border-radius: 8px; padding: 8px 14px; }
+.kt { color: #6E7781; font-size: 13px; display: block; }
+.kv { font-size: 32px; font-weight: 700; color: #1F2328; line-height: 1.2; display: block; }
+.kv.blue { color: #0969DA; }
+.kv.grey { color: #57606A; }
+.status { display: block; margin: 12px 0 0 0; font-size: 14px; color: #1F2328; }
