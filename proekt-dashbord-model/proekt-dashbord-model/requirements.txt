@@ -1,5 +1,0 @@
-taipy==4.1.0
-pandas>=2.0
-pyarrow>=14
-plotly>=5.18
-numpy>=1.24
