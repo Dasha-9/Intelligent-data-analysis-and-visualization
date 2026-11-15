@@ -1,0 +1,14 @@
+# Данные не храним в репозитории (размер > 100 МБ и служебная информация)
+data/*.parquet
+data/*.csv
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.taipy/
+user_data/
+# Системные файлы
+.DS_Store
+Thumbs.db
+~$*
