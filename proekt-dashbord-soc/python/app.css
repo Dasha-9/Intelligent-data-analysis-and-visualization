@@ -1,0 +1,23 @@
+body, .taipy-gui { background: #ffffff !important; }
+.MuiPaper-root.taipy-chart { box-shadow: none !important; }
+h1 { font-size: 24px !important; margin: 4px 0 2px 0 !important; color: #1F2328; }
+h3 { font-size: 15px !important; margin: 10px 0 0 0 !important; color: #1F2328; }
+.q { color: #6E7781; font-size: 12px; display: block; margin-bottom: 2px; }
+.legend { font-size: 13px; color: #57606A; }
+.c0 { color: #CF222E; } .c1 { color: #424A53; } .c2 { color: #8C959F; } .c3 { color: #D0D7DE; }
+.chips { color: #0969DA; font-size: 13px; }
+.note { color: #9A6700; font-size: 13px; margin-left: 12px; }
+.kpi { background: #F6F8FA; border-radius: 8px; padding: 8px 14px; }
+.kt { color: #6E7781; font-size: 13px; display: block; }
+.kv { font-size: 32px; font-weight: 700; color: #1F2328; line-height: 1.2; display: block; }
+.kv.grey { color: #57606A; }
+.kb, .kb.MuiButton-root { font-size: 32px !important; font-weight: 700 !important; color: #1F2328 !important; padding: 0 !important;
+  min-width: 0 !important; line-height: 1.2 !important; text-decoration: underline dotted #8C959F; text-underline-offset: 6px;
+  background: transparent !important; box-shadow: none !important; }
+.kb.red, .kb.red.MuiButton-root { color: #CF222E !important; }
+.crit { color: #CF222E !important; font-weight: 600; }
+.high { color: #424A53 !important; font-weight: 600; }
+.red { color: #CF222E !important; }
+.kb, .kb.MuiButton-root { border: none !important; }
+.frow { align-items: center; margin: 6px 0 4px 0; }
+.why { display: block; color: #57606A; font-size: 11.5px; font-style: italic; margin: 4px 2px 0 2px; line-height: 1.35; }
