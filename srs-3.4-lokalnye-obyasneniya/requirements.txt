@@ -1,0 +1,7 @@
+pandas>=2.0
+numpy>=1.24
+pyarrow>=14
+matplotlib>=3.7
+plotly>=5.18
+taipy==4.1.*
+# для python/local_shap.py – окружение комплекта IAVD_3.7_ML_team (lightgbm 4.7, scikit-learn 1.7.2)
