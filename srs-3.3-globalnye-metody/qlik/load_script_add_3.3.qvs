@@ -1,0 +1,26 @@
+// СРС 3.3 · дописать В КОНЕЦ скрипта приложения iavd_ml.qvf (после строк СРС 3.2)
+// Файлы xai_*.csv (папка qlik/data, их готовит python/qlik_prep.py) положить в папку подключения MyParquetFolder.
+// Числа в файлах – с десятичной запятой, как в приложении; SHAP уже развёрнут в длинный формат.
+
+XAI_PDP:      // PDP и ALE: 4 признака × 11 квантилей
+LOAD Признак, Квантиль, Значение, PDP, ALE
+FROM [lib://MyParquetFolder/xai_pdp_ale.csv] (txt, utf8, embedded labels, delimiter is ';', msq);
+
+XAI_ICE:      // ICE: 4 признака × 20 карточек × 11 квантилей; связана с XAI_PDP по полю Признак
+LOAD Признак, Линия, ICE_Квантиль, ICE_p
+FROM [lib://MyParquetFolder/xai_ice.csv] (txt, utf8, embedded labels, delimiter is ';', msq);
+
+XAI_Важность: // mean|SHAP| и ablation по 73 полям
+LOAD ПолеXAI, Ранг_SHAP, meanAbsSHAP, Доля_SHAP, Ранг_abl, Признаков, Дельта_abl
+FROM [lib://MyParquetFolder/xai_importance.csv] (txt, utf8, embedded labels, delimiter is ';', msq);
+
+XAI_Карты:    // 320 карточек практики 3.7 (40 наборов × 8)
+LOAD КартаXAI, Набор, НомерВНаборе, Исход, y_факт, p, base, z
+FROM [lib://MyParquetFolder/xai_cards.csv] (txt, utf8, embedded labels, delimiter is ';', msq);
+
+XAI_SHAP:     // вклады 73 признаков по каждой карточке; связана с XAI_Карты по КартаXAI
+LOAD КартаXAI, ПризнакSHAP, phi
+FROM [lib://MyParquetFolder/xai_shap.csv] (txt, utf8, embedded labels, delimiter is ';', msq);
+
+SET vTauXAI = 0.019258739887821837;   // порог модели lgbm_gate1
+SET vZtau   = -3.9303436957726285;    // z_τ = ln(τ / (1 − τ))
