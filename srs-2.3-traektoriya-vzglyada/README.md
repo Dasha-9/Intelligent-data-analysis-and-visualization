@@ -18,6 +18,8 @@
 | Qlik Sense | ![](images/qlik_do_F.png) | ![](images/qlik_posle_F.png) |
 | Taipy + Plotly | ![](images/taipy_do_F.png) | ![](images/taipy_posle_F.png) |
 
+![Текущая раскладка Taipy](images/raw/taipy_posle.png)
+
 ## Структура
 
 ```
