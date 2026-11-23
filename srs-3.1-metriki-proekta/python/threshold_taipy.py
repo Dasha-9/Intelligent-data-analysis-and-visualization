@@ -71,9 +71,8 @@ def refresh(state):
     state.fb_label = f'F{b:g}'.replace('.', ',')
     state.m_fb = pct(fb(r['P'], r['R'], b))
     ok = r['R'] >= MIN_RECALL
-    state.status = (f"✓ Требование выполнено: полнота {pct(r['R'])} ≥ 95 %. Пропущено {fmt(r['FN'])} инцидентов из {fmt(info['pos'])}, "
-                    f"с очереди снято {fmt(r['TN'] + r['FN'])} карточек." if ok else
-                    f"✗ Полнота {pct(r['R'])} ниже 95 %: пропущено {fmt(r['FN'])} инцидентов из {fmt(info['pos'])}.")
+    state.status = '✓ Полнота ≥ 95 %' if ok else '✗ Полнота ниже 95 %'
+
     state.fig_matrix = matrix_fig(r)
     state.fig_curve = curve_fig(float(state.tau), b)
 
@@ -94,8 +93,6 @@ def to_work(state):
 
 page = f"""
 # Порог триажа: полнота против точности
-
-<|text|value=Проверочный период 04.09–20.11.2025 · {fmt(info['test'])} карточек с вердиктом, из них {fmt(info['pos'])} реальных инцидентов · оценка – доля инцидентов у правила SIEM|class_name=q|>
 
 <|layout|columns=6 2 2|gap=20px|class_name=ctl|
 <|part|
@@ -146,4 +143,5 @@ page = f"""
 
 if __name__ == '__main__':
     Gui(page).run(   # стили – из threshold_taipy.css рядом со скриптом (Taipy подхватывает его сам)
-        title='СРС 3.1 · порог', port=5059, dark_mode=False, use_reloader=False)
+        title='СРС 3.1 · порог', port=5059, dark_mode=False, use_reloader=False,
+        server_config={'socketio': {'manage_session': False}})

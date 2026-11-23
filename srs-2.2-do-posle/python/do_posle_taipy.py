@@ -46,9 +46,9 @@ fig_posle = go.Figure(go.Bar(
     insidetextanchor='end', textfont=dict(size=14), cliponaxis=False,
     hovertemplate='%{y}: %{x} карточек<extra></extra>'))
 fig_posle.update_layout(
-    title=dict(text=f'<b>14.06.2024: {top.max()/N:.0%} карточек дало одно правило — сканирование портов</b>'
-                    f'<br><span style="font-size:14px;color:{MUTED}">Карточки по правилу корреляции SIEM, шт. · '
-                    f'топ-{TOP} из {len(vc)} правил · сутки по МСК, всего {fmt(N)} карточек</span>',
+    title=dict(text='<b>Карточки по правилам корреляции SIEM</b>'
+                    f'<br><span style="font-size:14px;color:{MUTED}">14.06.2024 (МСК) · '
+                    f'топ-{TOP} из {len(vc)} правил · всего {fmt(N)} карточек</span>',
                font=dict(size=20, color=INK), x=0.01),
     paper_bgcolor='white', plot_bgcolor='white', showlegend=False,
     xaxis=dict(visible=False, range=[0, top.max() * 1.02]),
@@ -63,4 +63,5 @@ page_posle = "## Версия «после»\n\n<|chart|figure={fig_posle}|heigh
 if __name__ == '__main__':
     print(N, len(vc)); print(top.to_string())
     Gui(pages={'/': '<|navbar|lov={nav}|>','do': page_do, 'posle': page_posle}).run(
-        title='СРС 2.2 · до → после', run_browser='--no-browser' not in sys.argv, port=5055, use_reloader=False, dark_mode=False)
+        title='СРС 2.2 · до → после', run_browser='--no-browser' not in sys.argv, port=5055, use_reloader=False, dark_mode=False,
+        server_config={'socketio': {'manage_session': False}})

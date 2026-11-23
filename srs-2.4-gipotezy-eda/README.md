@@ -23,6 +23,8 @@
 | Python (matplotlib) | ![](images/h1_rules.png) | ![](images/h2_load.png) | ![](images/h3_take.png) |
 | Qlik Sense | ![](images/qlik_h1.png) | ![](images/qlik_h2.png) | ![](images/qlik_h3.png) |
 
+[Дополнение к отчёту по гипотезе 1](report/taipy-addendum.md).
+
 ## Структура
 
 ```

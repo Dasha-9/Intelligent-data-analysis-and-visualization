@@ -13,7 +13,7 @@ from shap_flow import (load, filt, kpi, importance, by_value, by_hour, blind, fn
                        Z_TAU, TAU, GROUP_ORDER, OUT_RU)
 
 INK, MUTED, LINE, ACC, RED, GRAY, LIGHT, DARK = '#1F2328', '#6E7781', '#D0D7DE', '#0969DA', '#CF222E', '#8C959F', '#E6E9ED', '#57606A'
-GCOL = {'сеть': '#0969DA', 'правило и источник': '#57606A', 'текст алерта и команд': '#8C959F', 'время': '#BF8700'}
+GCOL = {'сеть': '#0969DA', 'правило и источник': '#57606A', 'текст алерта и команд': '#8C959F', 'время': '#C3C9D0'}
 FONT = dict(family='Segoe UI, Arial, sans-serif', size=12, color=INK)
 fmt = lambda v: f'{int(round(v)):,}'.replace(',', ' ')
 pct = lambda v, d=1: '—' if v is None or (isinstance(v, float) and np.isnan(v)) else f'{v * 100:.{d}f} %'.replace('.', ',')
@@ -50,7 +50,7 @@ def fig_importance(r):
     fig.add_bar(y=lab, x=r['imp'], orientation='h', marker_color=[GCOL[g] for g in r['group']],
                 text=[num(v) for v in r['imp']], textposition='outside', cliponaxis=False, customdata=r['group'],
                 hovertemplate='%{y}: %{x:.3f} · группа «%{customdata}»<extra></extra>')
-    fig.update_xaxes(visible=False)
+    fig.update_xaxes(title='Средний модуль SHAP')
     return fig
 
 
@@ -168,7 +168,7 @@ card = cards_lov[0]
 chips = ''
 k_n = k_inc = k_fn = k_fnp = k_add = ''
 f_imp = f_src = f_grp = f_hour = f_blind = f_fntp = f_water = go.Figure()
-t_src = t_grp = t_hour = t_blind = t_fntp = card_title = card_text = card_sum = ''
+card_title = card_text = ''
 top_table = pd.DataFrame()
 
 
@@ -184,56 +184,24 @@ def refresh(state, keep_card=False):
     parts = []
     if state.typ != 'все': parts.append(f'тип: {state.typ}')
     if state.out != 'все': parts.append(f'исход: {OUT_RU[state.out]} ({state.out})')
-    state.chips = ('Выбрано – ' + ' · '.join(parts) + '. «Сбросить» – весь поток.') if parts else 'Весь поток эксплуатации. Клик по типу инцидента в вопросе 4 или выбор вверху фильтрует дашборд.'
+    state.chips = ('Выбрано – ' + ' · '.join(parts) + '') if parts else 'Весь поток эксплуатации'
 
     state.f_imp = fig_importance(importance(d, PHI))
 
     g = by_value(d_all, 'src_kind', 'src_is_private', ['внешний', 'внутренний', 'не указан'])
     state.f_src = fig_value(g, 'вклад src_is_private, z')
-    if 'внешний' in g.index and 'внутренний' in g.index:
-        state.t_src = (f'Внешний источник: модель тянет к инциденту ({sgn(g.loc["внешний", "phi"])}), и инцидентов среди таких карточек '
-                       f'{pct(g.loc["внешний", "inc"], 0)} – против {pct(g.loc["внутренний", "inc"])} у внутреннего. Довод подтверждается.')
-    else:
-        state.t_src = 'В выборке нет карточек с внешним и внутренним источником одновременно.'
 
     g2 = by_value(d_all, 'grp_empty', 'len_Значение Инцидента (группировка)', ['пустое', 'заполнено'])
     state.f_grp = fig_value(g2, 'вклад длины поля, z', h=170)
-    if len(g2) == 2:
-        pe, pf = g2.loc['пустое', 'inc'], g2.loc['заполнено', 'inc']
-        ratio = pe / pf if pf else np.inf
-        fact = ('столько же, сколько среди заполненных' if 0.8 <= ratio <= 1.25 else
-                f'в {num(ratio, 1)} раза больше, чем среди заполненных' if ratio > 1.25 else
-                'даже меньше, чем среди заполненных')
-        verdict = 'Довод не подтверждается.' if ratio <= 1.25 else 'В этой группе довод отчасти подтверждается, но вклад завышен.'
-        state.t_grp = (f'Пустое поле модель считает доводом «за инцидент» ({sgn(g2.loc["пустое", "phi"])} против '
-                       f'{sgn(g2.loc["заполнено", "phi"])}), а инцидентов среди пустых {pct(pe)} – {fact} ({pct(pf)}). {verdict}')
-    else:
-        state.t_grp = ''
 
     h = by_hour(d_all)
     state.f_hour = fig_hour(h)
-    ok = h['n'].fillna(0) >= 30
-    if ok.sum() >= 3:
-        cor = np.corrcoef(h.loc[ok, 'phi'], h.loc[ok, 'inc'])[0, 1]
-        state.t_hour = (f'Связь вклада времени с реальной долей инцидентов по часам слабая (корреляция {num(cor)}): '
-                        f'вклад отражает поток смены, а не опасность карточки.')
-    else:
-        state.t_hour = ''
 
     b = blind(D)
     state.f_blind = fig_blind(b, state.typ)
-    if not b.empty:
-        worst = b.sort_values('miss', ascending=False).iloc[0]
-        net = b.loc['Сетевая безопасность'] if 'Сетевая безопасность' in b.index else None
-        state.t_blind = (f'Хуже всего – «{b.sort_values("miss", ascending=False).index[0]}»: пропущено {fmt(worst["fn"])} из {fmt(worst["inc"])} '
-                         f'({pct(worst["miss"], 0)})' + (f'; сетевые – только {fmt(net["fn"])} из {fmt(net["inc"])}.' if net is not None else '.'))
+
     r = fn_vs_tp(d_all)
     state.f_fntp = fig_fntp(r)
-    if r.notna().all().all():
-        state.t_fntp = (f'У пропущенных инцидентов сеть даёт {sgn(r.loc["FN", "сеть"])}, у найденных {sgn(r.loc["TP", "сеть"])}: '
-                        f'модели не на что опереться, решение держится на тексте и времени.')
-    else:
-        state.t_fntp = ''
 
     state.cards_lov = card_lov(d)
     if not state.cards_lov:
@@ -255,8 +223,6 @@ def refresh_card(state):
     state.card_title = (f'Карточка {eid} · {r["type"]} · p = {num(r["score"], 4)} · решение модели – '
                         f'{"инцидент" if r["flag"] else "легитимно"} · вердикт – {r["card__Вердикт"] or "нет"}'
                         + (f' · {OUT_RU[oc]} ({oc})' if oc else ''))
-    state.card_sum = (f'base {num(r["base"])} + топ-10 {sgn(e["top"]["Вклад"].sum())} + остальные {e["n_tail"]} {sgn(e["tail"])} '
-                      f'= z {num(r["z"])}; до порога {sgn(r["z"] - Z_TAU)}.')
     f = lambda k: (r.get('card__' + k) or '—')
     desc = f('Описание инцидента')
     state.card_text = (f'Правило: {f("Наименование")[:90]}\n\nТип: {f("Тип инцидента")[:80]} · критичность: {f("Критичность")}\n\n'
@@ -291,14 +257,13 @@ def on_init(state):
 
 page = """
 # Можно ли верить объяснению модели? · поток эксплуатации, 20 584 карточки
-<|text|value=Модель курса lgbm_gate1 решает по каждой карточке SOC: «инцидент» (оценка ≥ τ = 0,0193) или «легитимно». SHAP раскладывает решение по полям карточки: сколько каждое поле добавило «к инциденту» (красный) или «к легитимному» (синий). Проверяем, подтверждаются ли эти доводы вердиктами аналитиков, – на уровне потока, группы и одной карточки.|class_name=q|>
 
 <|layout|columns=3 4 1|gap=14px|class_name=frow|
 <|part|
 <|{typ}|selector|lov={TYPES}|dropdown|label=Тип инцидента (Пиктограмма IRP)|on_change=on_filter|width=100%|>
 |>
 <|part|
-<|text|value=Исход: FN – модель пропустила инцидент, TP – нашла, FP – ложная тревога, TN – верно сняла шум|class_name=kt|>
+<|text|value=Исход · FN — пропуск · TP — найден · FP — ложная тревога · TN — верно снят шум|class_name=kt|>
 <|{out}|toggle|lov={out_lov}|on_change=on_filter|>
 |>
 <|part|
@@ -317,73 +282,54 @@ page = """
 <|{k_inc}|text|class_name=kv grey|>
 |>
 <|part|class_name=kpi kpi_main|
-<|text|value=Модель пропустила реальных инцидентов|class_name=kt|>
+<|text|value=Пропущено инцидентов|class_name=kt|>
 <|{k_fn}|text|class_name=kv red|> <|{k_fnp}|text|class_name=kv2 red|>
 |>
 <|part|class_name=kpi|
-<|text|value=Объяснение сходится с оценкой: max разница, допуск 0,000001|class_name=kt|>
-<|{k_add}|text|class_name=kv green|>
+<|text|value=Макс. ошибка аддитивности SHAP|class_name=kt|>
+<|{k_add}|text|class_name=kv blue|>
 |>
 |>
-<|text|value=Почему KPI: аналитику сначала нужно знать масштаб – сколько карточек, сколько среди них реальных инцидентов и сколько модель потеряла; последняя плитка – проверка, что объяснению вообще можно верить (сумма вкладов даёт ту же оценку, допуск 10⁻⁶: вклады хранятся во float32).|class_name=why|>
 
 <|layout|columns=5 7|gap=20px|
 <|part|
-### 1. Поток: на что модель смотрит?
-<|text|value=Средний вклад поля по модулю (средний модуль SHAP) – 12 главных полей; цвет – группа: синий – сеть, тёмно-серый – правило и источник, серый – текст алерта и команд, жёлтый – время.|class_name=q|>
+### Важность полей по SHAP
 <|chart|figure={f_imp}|plot_config={pc}|height=330px|>
-<|text|value=Почему горизонтальные столбцы с цветом группы: длинные имена полей читаются слева, длина – сила довода; цвет группы показывает, что модель опирается прежде всего на сеть (адреса и хосты), а не на текст.|class_name=why|>
 |>
 <|part|
-### 2. Поток: довод подтверждается – внешний источник
-<|text|value=Слева – что модель «думает» о поле src_is_private (адрес источника внешний или внутренний), справа – сколько среди этих карточек на самом деле инцидентов.|class_name=q|>
+### Внешние и внутренние источники
 <|chart|figure={f_src}|plot_config={pc}|height=200px|>
-<|{t_src}|text|class_name=ok|>
-<|text|value=Почему два графика рядом на одних строках: довод модели (в z) и факт (в %) – разные шкалы, на одной оси их не сравнить; рядом видно, совпадает ли направление: где модель тянет к инциденту, там и инцидентов больше.|class_name=why|>
 |>
 |>
 
-### 3. Поток: каким доводам не верить – пустые поля и время создания
+### Заполненность поля «Значение Инцидента (группировка)»
 <|layout|columns=5 7|gap=20px|
 <|part|
-<|text|value=Поле «Значение Инцидента (группировка)»: пустое или заполнено. Модель получает его длину (len_…).|class_name=q|>
 <|chart|figure={f_grp}|plot_config={pc}|height=170px|>
-<|{t_grp}|text|class_name=bad|>
-<|text|value=Почему та же пара графиков, что в вопросе 2: одинаковая форма позволяет сравнить подтверждённый и сомнительный довод одним взглядом.|class_name=why|>
 |>
 <|part|
-<|text|value=Поле «Создан»: средний вклад по часу создания карточки (сверху) и реальная доля инцидентов в этот час (снизу). Часы с ≥ 30 карточками.|class_name=q|>
+### Вклад времени создания и доля инцидентов по часам
 <|chart|figure={f_hour}|plot_config={pc}|height=330px|>
-<|{t_hour}|text|class_name=bad|>
-<|text|value=Почему два графика по часам друг над другом: общая ось времени позволяет сравнить профиль суток – где модель тянет к инциденту и где инциденты на самом деле случаются.|class_name=why|>
 |>
 |>
 
 <|layout|columns=7 5|gap=20px|
 <|part|
-### 4. Группа: где модель слепа?
-<|text|value=Реальные инциденты по типу: серый – все, красный – пропущенные моделью. Клик по типу – фильтр всего дашборда, повторный клик – сброс.|class_name=q|>
+### Пропуски по типу инцидента
 <|chart|figure={f_blind}|plot_config={pc}|on_click=click_blind|height=300px|>
-<|{t_blind}|text|class_name=bad|>
-<|text|value=Почему «серый + красный»: доля пропусков без размера группы обманчива – серый столбец задаёт масштаб, красный и подпись «N из M» показывают потери; та же форма, что на дашборде 2.|class_name=why|>
 |>
 <|part|
-### Почему пропускает: доводы FN против TP
-<|text|value=Средняя сумма вкладов по группам полей: пропущенные инциденты (красный) против найденных (серый).|class_name=q|>
+### Вклады групп полей для FN и TP
 <|chart|figure={f_fntp}|plot_config={pc}|height=260px|>
-<|{t_fntp}|text|class_name=bad|>
-<|text|value=Почему группы, а не поля: у пропущенных инцидентов не хватает доводов сразу в нескольких связанных полях; сумма по группе показывает это одной парой столбцов.|class_name=why|>
 |>
 |>
 
-### 5. Карточка: почему модель так решила?
+### Водопад SHAP по карточке
 <|layout|columns=3 2|gap=20px|
 <|part|
 <|{card}|selector|lov={cards_lov}|dropdown|label=Карточка (сначала пропуски, ближе к порогу)|on_change=on_card|width=100%|>
 <|{card_title}|text|class_name=ct|>
 <|chart|figure={f_water}|plot_config={pc}|height=480px|>
-<|{card_sum}|text|class_name=sum|>
-<|text|value=Почему водопад: показывает, как из базы модели (−8,85, «почти наверняка легитимно») получается итог; каждый шаг – вклад поля, отдельная ступень – хвост остальных полей, пунктир – порог.|class_name=why|>
 |>
 <|part|
 <|text|value=Что видит аналитик в карточке|class_name=kt|>
@@ -396,4 +342,5 @@ page = """
 
 if __name__ == '__main__':
     Gui(page).run(title='Можно ли верить объяснению модели?', port=5083, use_reloader=False, dark_mode=False,
+        server_config={'socketio': {'manage_session': False}},
                   run_browser='--no-browser' not in sys.argv)

@@ -58,11 +58,12 @@ def fig_weekly(w):
         return empty(280)
     fig = base(go.Figure(), 280, r=10)
     x = w['week'].dt.strftime('%d.%m')
-    fig.add_bar(x=x, y=w['found'], marker_color=GRAY, hovertemplate='неделя с %{x}: найдено %{y}<extra></extra>')
-    fig.add_bar(x=x, y=w['missed'], marker_color=RED, hovertemplate='неделя с %{x}: пропущено %{y}<extra></extra>')
+    fig.add_bar(x=x, y=w['found'], name='Найдено', marker_color=GRAY, hovertemplate='неделя с %{x}: найдено %{y}<extra></extra>')
+    fig.add_bar(x=x, y=w['missed'], name='Пропущено', marker_color=RED, hovertemplate='неделя с %{x}: пропущено %{y}<extra></extra>')
     fig.add_scatter(x=x, y=w['inc'], mode='text', text=[f'<b>{pct(m, 0)}</b>' for m in w['miss']], textposition='top center',
-                    textfont=dict(color=RED, size=12), hoverinfo='skip')
+                    textfont=dict(color=RED, size=12), hoverinfo='skip', showlegend=False)
     fig.update_layout(barmode='stack')
+    fig.update_layout(showlegend=True, legend=dict(orientation='h', y=1.12, x=0))
     fig.update_yaxes(range=[0, w['inc'].max() * 1.18], showgrid=True, gridcolor='#EEF0F2')
     return fig
 
@@ -143,13 +144,11 @@ pc = {'displayModeBar': False}
 
 def texts(b, s):
     c = b['c']
-    lab = (f'Прогнозов в периоде: {fmt(b["n_all"])}, с вердиктом аналитика – {fmt(b["n_lab"])}; метрики – только по ним'
-           + (' (у свежих прогнозов вердикта ещё нет – проверить модель на них пока нельзя).' if b['n_lab'] < b['n_all'] * 0.5 else '.')
-           + f' Порог τ = {num(s["tau"])}.')
+    lab = f'Прогнозов: {fmt(b["n_all"])} · с вердиктом: {fmt(b["n_lab"])} · порог τ = {num(s["tau"])}'
     return dict(k_miss=f'{fmt(c["FN"])} из {fmt(c["inc"])}', k_miss_p=pct(c['miss']), k_rec=pct(c['recall']), k_prec=pct(c['prec']),
                 k_flag=pct(c['flag']), k_agree=pct(c['agree']), k_lat='—' if np.isnan(b['lat']) else f'{num(b["lat"])} с', k_note=lab,
-                chips=(f'Выбрано – {s["slice"]}: {s["group"]} (повторный клик или «Сбросить» – снять)' if s['group'] else
-                       'Клик по строке в «Где модель пропускает» – отфильтровать весь дашборд'))
+                chips=(f'Выбрано – {s["slice"]}: {s["group"]}' if s['group'] else
+                       'Клик по группе применяет фильтр.'))
 
 
 _s = dict(dates=dates, tau=tau, slice=slice_, group=group)
@@ -214,7 +213,6 @@ def reset(state):
 
 page = """
 # Можно ли доверять модели? · лог инференса 04.09–29.11.2025
-<|text|value=Модель-советчик wlarf-dec-jun-v3 оценивает каждую карточку SOC: «к аналитику» (похоже на инцидент) или «шум». Сравниваем её решения с вердиктами аналитиков.|class_name=q|>
 
 <|layout|columns=4 3 4 1|gap=14px|class_name=frow|
 <|part|
@@ -224,7 +222,7 @@ page = """
 <|Весь период|button|on_action=all_period|> <|30 дней|button|on_action=last30|> <|7 дней|button|on_action=last7|>
 |>
 <|part|
-<|text|value=Порог τ: карточка уходит аналитику, если оценка ≥ τ (по умолчанию 0,18)|class_name=kt|>
+<|text|value=Порог τ · оценка ≥ τ → к аналитику|class_name=kt|>
 <|{tau}|slider|min=0.02|max=0.6|step=0.01|width=100%|labels=True|>
 |>
 <|part|
@@ -236,7 +234,7 @@ page = """
 
 <|layout|columns=2 1 1 1 1 1|gap=12px|
 <|part|class_name=kpi kpi_main|
-<|text|value=Пропущено реальных инцидентов – главный риск для SOC|class_name=kt|>
+<|text|value=Пропущено реальных инцидентов|class_name=kt|>
 <|{k_miss}|text|class_name=kv red|> <|{k_miss_p}|text|class_name=kv2 red|>
 |>
 <|part|class_name=kpi|
@@ -261,46 +259,36 @@ page = """
 |>
 |>
 <|{k_note}|text|class_name=note|>
-<|text|value=Почему ряд KPI и первая плитка красная: главный вопрос руководства – сколько инцидентов теряется; одно число отвечает быстрее любого графика, дробь «N из M» понятнее процента.|class_name=why|>
 
 <|layout|columns=5 7|gap=20px|
 <|part|
-### 1. Как часто модель согласна с аналитиком?
-<|text|value=Матрица в карточках, а не в процентах: красная клетка – инциденты, которые модель отправила бы «в шум».|class_name=q|>
+### Матрица ошибок
 <|chart|figure={f_matrix}|plot_config={pc}|height=300px|>
-<|text|value=Почему матрица в карточках: руководителю нужны количества и подписи словами, а не проценты и коды TP/FN; цветом выделена только опасная клетка.|class_name=why|>
 |>
 <|part|
-### 2. Стабильна ли модель? Пропуски по неделям
-<|text|value=Столбец – реальные инциденты недели: серый – модель нашла, красный – пропустила; подпись – доля пропущенных.|class_name=q|>
+### Пропуски по неделям
 <|chart|figure={f_week}|plot_config={pc}|height=280px|>
-<|text|value=Почему сложенные столбцы по неделям: неделя – привычный период отчёта; один столбец показывает и объём инцидентов, и долю пропусков.|class_name=why|>
 |>
 |>
 
 <|layout|columns=7 5|gap=20px|
 <|part|
-### 3. Ошибается случайно или систематически? Где модель пропускает
+### Пропуски по группам
 <|{slice_}|toggle|lov={slice_lov}|>
-<|text|value=Серый – все реальные инциденты группы, красный – пропущенные; группы с ≥ 5 инцидентами. Клик по строке – фильтр.|class_name=q|>
 <|chart|figure={f_where}|plot_config={pc}|on_click=click_where|height=340px|>
-<|text|value=Почему «серый + красный» по группам: доля пропусков без размера группы обманчива – серый столбец задаёт масштаб, красный и подпись «N из M» показывают потери.|class_name=why|>
 |>
 <|part|
-### 4. Можно ли верить «вероятности»?
-<|text|value=Карточки сгруппированы по оценке модели: серый – что модель обещала в среднем, синий – сколько на самом деле оказалось инцидентами.|class_name=q|>
+### Калибровка оценки модели
 <|chart|figure={f_calib}|plot_config={pc}|height=290px|>
-<|text|value=Почему парные столбцы «обещала / оказалось»: сравнение двух столбцов рядом читается без слова «калибровка»; подпись – сколько карточек в группе.|class_name=why|>
 |>
 |>
 
-### 5. Поможет ли другой порог?
-<|text|value=Ниже порог – больше инцидентов найдено, но и больше карточек уходит аналитикам. Синяя полоса – цель «найдено ≥ 95 %» из СРС 3.1; ползунок порога – вверху страницы.|class_name=q|>
+### Полнота и нагрузка при разных порогах
 <|chart|figure={f_tau}|plot_config={pc}|height=280px|>
-<|text|value=Почему две линии на одной оси: решение о пороге – это обмен «пропуски ↔ нагрузка аналитиков», и обе стороны видны сразу; полоса – цель 95 %.|class_name=why|>
 """
 
 if __name__ == '__main__':
     Gui(page).run(   # стили – app.css рядом со скриптом (Taipy подключает его автоматически)
         title='Можно ли доверять модели?', port=5081, use_reloader=False, dark_mode=False,
+        server_config={'socketio': {'manage_session': False}},
         run_browser='--no-browser' not in sys.argv)

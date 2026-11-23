@@ -96,7 +96,7 @@ page = """
 <|part|
 <|chart|figure={fig_c}|height=330px|>
 
-**Кодировка Вердикта: форма + подпись**  
+### Вердикты
 <|{legend}|text|mode=markdown|>
 |>
 |>
@@ -107,4 +107,5 @@ page = """
 if __name__ == '__main__':
     import os
     Gui(page, css_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')).run(title='СРС 2.1 · обзор карточек', port=5056, use_reloader=False,
-                                         run_browser='--no-browser' not in sys.argv, dark_mode=False)
+                                         run_browser='--no-browser' not in sys.argv, dark_mode=False,
+                                         server_config={'socketio': {'manage_session': False}})

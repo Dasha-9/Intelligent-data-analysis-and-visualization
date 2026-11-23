@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from taipy.gui import Gui
 
 sys.path.insert(0, os.path.dirname(__file__))
-from shap_data import load, explain, NOTES, Z_TAU, TAU, TOL
+from shap_data import load, explain, Z_TAU, TAU, TOL
 
 INK, MUTED, GRAY, LINE, ACC, RED = '#1F2328', '#6E7781', '#C3C9D0', '#D0D7DE', '#0969DA', '#CF222E'
 num = lambda v, d=2: f'{v:.{d}f}'.replace('.', ',').replace('-', '−')
@@ -32,7 +32,7 @@ top_n = '10'
 fig_water = go.Figure()
 fig_groups = go.Figure()
 k_p = k_dec = k_ver = k_out = k_gap = ''
-add_line = note_kind = note_text = sum_line = ''
+add_line = ''
 top_table = None
 fields_table = None
 
@@ -85,20 +85,10 @@ def refresh(state):
     state.k_ver = str(c['verdict'])
     state.k_out = OUT[c['outcome']]
     state.k_gap = sgn(e['gap'])
-    state.sum_line = (f'base {num(c["base"], 4)} + топ-{state.top_n} {sgn(e["top"]["Вклад"].sum(), 3)} + остальные {e["n_tail"]} '
-                      f'{sgn(e["tail"], 3)} = z {num(e["z"], 4)} → p = σ(z) = {num(e["p_sig"], 6)}. '
-                      f'Топ-{state.top_n} объясняет {e["top"]["Вклад"].sum() / (e["z"] - c["base"]) * 100:.0f} % отклонения от базы.')
     ok = e['err'] <= TOL
-    state.add_line = (f'Проверка аддитивности: |σ(base + Σφ) − p| = {e["err"]:.1e} ' + ('≤ 5·10⁻⁷ – объяснение сходится с оценкой ✓' if ok
-                      else '> 5·10⁻⁷ – объяснение НЕ сходится с оценкой ✗'))
-    kind, text = NOTES.get(eid, ('', ''))
-    if not text:
-        t0 = e['top'].iloc[0]
-        kind = 'шаблон 3.7'
-        text = (f'Наибольший вклад дало поле {t0["Поле"]}: {t0["Направление"]} на {sgn(t0["Вклад"])} в логарифме шансов; '
-                f'база {num(c["base"])}. Решение – {state.k_dec.lower()}; что это – данные, порог или признак, решает разбор карточки.')
-    state.note_kind = kind
-    state.note_text = text
+    relation = '≤' if ok else '>'
+    mark = '✓' if ok else '✗'
+    state.add_line = f'Аддитивность: {e["err"]:.1e} {relation} 5·10⁻⁷ {mark}'
     state.top_table = e['top'][['Поле', 'Значение в карточке', 'Вклад', 'Направление', 'Тип']]
     from shap_data import KEY_FIELDS, short
     state.fields_table = __import__('pandas').DataFrame({'Поле карточки': KEY_FIELDS,
@@ -119,7 +109,6 @@ def on_init(state):
 
 page = """
 <|{title}|text|class_name=h1|>
-<|text|value=Модель lgbm_gate1 v001 · порог τ = 0,019259 (z_τ = −3,9303) · вклады SHAP в логарифме шансов, режим структуры деревьев (pred_contrib)|class_name=q|>
 
 <|layout|columns=1 4 2|gap=20px|class_name=ctl|
 <|part|
@@ -160,23 +149,16 @@ page = """
 <|layout|columns=3 2|gap=24px|
 <|part|
 ### Водопад: от базы модели к итогу
-<|text|value=Почему водопад: показывает, откуда взялся итог – старт с базы, каждый шаг – вклад поля, отдельной строкой хвост остальных полей, чтобы топ-10 не выдавался за всё объяснение|class_name=why|>
 <|chart|figure={fig_water}|>
-<|{sum_line}|text|class_name=sum|>
 <|{add_line}|text|class_name=add|>
 |>
 <|part|
-### Вывод: данные, порог или признак?
-<|{note_kind}|text|class_name=tag|>
-<|{note_text}|text|class_name=note|>
 ### Группы связанных полей
-<|text|value=Почему группы: вклад одного поля размазан по связанным колонкам (адреса, хосты, IP), поэтому выводы формулируем про группу – «сработала сеть», а не «виноват хост»|class_name=why|>
 <|chart|figure={fig_groups}|>
 |>
 |>
 
 ### Крупнейшие вклады и значения полей
-<|text|value=Почему таблица: аналитику нужно сверить вклад с тем, что написано в карточке; у сконструированных признаков (len_, freq_, cmd_) такого поля в карточке SOAR нет|class_name=why|>
 <|{top_table}|table|show_all|width=100%|>
 
 ### Поля карточки
@@ -185,4 +167,5 @@ page = """
 
 if __name__ == '__main__':
     Gui(page).run(   # стили – из why_taipy.css рядом со скриптом (Taipy подхватывает его сам)
-        title='Почему так? · СРС 3.4', port=5082, dark_mode=False, run_browser=False, use_reloader=False)
+        title='Почему так? · СРС 3.4', port=5082, dark_mode=False, run_browser=False, use_reloader=False,
+        server_config={'socketio': {'manage_session': False}})

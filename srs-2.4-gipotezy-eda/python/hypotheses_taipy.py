@@ -33,40 +33,29 @@ fig_h1.add_hrect(y0=H1_MIN_FP * 100, y1=101, fillcolor='#DDF4FF', line_width=0, 
 fig_h1.add_vline(x=H1_MIN_N, line=dict(color='#D0D7DE', dash='dash'))
 fig_h1.add_hline(y=s1['fp_all'] * 100, line=dict(color=GRAY_D, width=1),
                  annotation_text=f'в среднем {pct(s1["fp_all"])} FP', annotation_position='bottom left')
-fig_h1.add_annotation(x=np.log10(700), y=95, ax=0, ay=330, showarrow=True, arrowcolor=ACC, arrowhead=2,
-                      text=f'«шумные» правила: ≥ {H1_MIN_N} карточек и ≥ {int(H1_MIN_FP * 100)} % FP<br>'
-                           f'{s1["noisy_rules"]} правил · {fmt(s1["noisy_cards"])} карточек ({pct(s1["noisy_share"])} разобранных)<br>'
-                           f'из них «Решён» – {s1["noisy_solved"]}: отключать нельзя, только донастраивать',
-                      font=dict(color=ACC, size=13), bgcolor='white', bordercolor=ACC)
-fig_h1.update_layout(**BASE, title=title(f'Гипотеза 1. {s1["noisy_rules"]} правил SIEM почти всегда дают False Positive – '
-                                         f'{pct(s1["noisy_share"])} разобранных карточек',
-                                         f'Точка – правило корреляции SIEM ({s1["rules"]} правил с вердиктом) · наведите, чтобы увидеть имя правила'),
+fig_h1.update_layout(**BASE, title=title('Правила SIEM и доля False Positive', 'Синий цвет · ≥ 300 карточек и ≥ 95 % False Positive'),
                      xaxis=dict(type='log', title='Разобранных карточек по правилу (лог. шкала)', showgrid=False, range=[-0.1, 4.4]),
                      yaxis=dict(title='Доля False Positive, %', gridcolor='#EEF0F2', range=[-2, 101]))
 
 # ---------- Гипотеза 2: нагрузка часа × просрочка SLA ----------
-g2, slots2, s2 = h2_load(df)
+g2, _, s2 = h2_load(df)
 lbl = [f'{l}<br><span style="font-size:11px;color:{MUTED}">{fmt(r.cards)} карт. · {fmt(r.slots)} ч</span>' for l, r in g2.iterrows()]
 fig_h2 = go.Figure(go.Bar(x=lbl, y=g2.over * 100, marker_color=[ACC if v >= 0.35 else GRAY for v in g2.over],
                           text=[pct(v) for v in g2.over], textposition='outside', textfont=dict(size=15),
                           hovertemplate='%{y:.1f} %<extra></extra>'))
 fig_h2.add_hline(y=s2['over_all'] * 100, line=dict(color=GRAY_D, dash='dash'),
                  annotation_text=f'в среднем {pct(s2["over_all"])}', annotation_position='top left')
-fig_h2.update_layout(**BASE, title=title(f'Гипотеза 2. Чем больше карточек за час, тем чаще просрочен SLA взятия: '
-                                         f'{pct(g2.over.iloc[0])} → {pct(g2.over.iloc[-1])}',
-                                         f'Доля «SLA просрочен (взятие в работу)» = True по группам нагрузки часа (МСК) · '
-                                         f'{fmt(s2["cards"])} карточек, {fmt(s2["slots"])} часов · Спирмен ρ = {s2["rho"]:.2f}'.replace('.', ',')),
+fig_h2.update_layout(**BASE, title=title('Почасовая нагрузка и просрочка SLA', 'Группировка по числу карточек за час (МСК)'),
                      xaxis=dict(title='Карточек создано за тот же час (МСК)'),
                      yaxis=dict(title='Доля с просроченным SLA взятия, %', gridcolor='#EEF0F2', range=[0, 55]), bargap=0.35)
 
 # ---------- Гипотеза 3: время до взятия по критичности ----------
-d3, g3, s3 = h3_take(df)
+d3, g3, _ = h3_take(df)
 fig_h3 = go.Figure()
 for k in ORDER[::-1]:
     lx = np.log10(d3.loc[d3.crit == k, 'take'] + 0.1)          # усы считаем на лог. шкале, как в matplotlib-версии
     q1, med, q3 = lx.quantile([.25, .5, .75])
     lo, hi = lx[lx >= q1 - 1.5 * (q3 - q1)].min(), lx[lx <= q3 + 1.5 * (q3 - q1)].max()
-    r = g3.loc[k]
     fig_h3.add_box(y=[k], q1=[10 ** q1], median=[10 ** med], q3=[10 ** q3], lowerfence=[10 ** lo], upperfence=[10 ** hi],
                    name=k, orientation='h', marker_color=RED if k == 'Критическая' else GRAY_D,
                    fillcolor='#FFEBE9' if k == 'Критическая' else '#EEF0F2', line=dict(width=1.5), hoverinfo='skip')
@@ -74,10 +63,7 @@ for i, k in enumerate(ORDER[::-1]):
     r = g3.loc[k]
     fig_h3.add_shape(type='line', x0=r.sla, x1=r.sla, y0=i - 0.4, y1=i + 0.4, yref='y', line=dict(color=RED, width=3))
     fig_h3.add_annotation(x=np.log10(r.sla), y=i + 0.45, text=f'SLA {r.sla:.0f}', showarrow=False, font=dict(color=RED, size=11))
-c3 = g3.loc['Критическая']
-fig_h3.update_layout(**BASE, title=title(f'Гипотеза 3. Критические карточки ждут дольше всех: медиана {c3.med:.0f} мин при SLA {c3.sla:.0f} мин',
-                                         f'Минут от «Создан» до «Дата взятия в работу» · ящик – Q1–Q3, усы – 1,5 IQR · '
-                                         f'{fmt(s3["valid"])} карточек (без пустых и отрицательных интервалов) · красная черта – SLA'),
+fig_h3.update_layout(**BASE, title=title('Время до взятия в работу по критичности', 'Красная черта · SLA взятия в работу'),
                      xaxis=dict(type='log', title='Минут до взятия в работу (лог. шкала)', gridcolor='#EEF0F2',
                                 tickvals=[1, 2, 5, 10, 30, 60, 240, 1440], ticktext=['1', '2', '5', '10', '30', '1 ч', '4 ч', '24 ч'],
                                 range=[-0.7, 3.5]),
@@ -86,11 +72,12 @@ fig_h3.update_layout(**BASE, title=title(f'Гипотеза 3. Критичес�
 nav = [('/h1', 'Гипотеза 1 · правила'), ('/h2', 'Гипотеза 2 · нагрузка'), ('/h3', 'Гипотеза 3 · критичность')]
 pages = {
     '/': '<|navbar|lov={nav}|>',
-    'h1': '<|chart|figure={fig_h1}|height=640px|>\n\n**Поле:** «Правило корреляции SIEM», «Вердикт» · **проверка в модуле 3:** правило как признак модели FP',
-    'h2': '<|chart|figure={fig_h2}|height=640px|>\n\n**Поле:** «Создан» (час МСК), «SLA просрочен (взятие в работу)» · **проверка в модуле 3:** нагрузка часа как признак',
-    'h3': '<|chart|figure={fig_h3}|height=640px|>\n\n**Поле:** «Критичность», «Создан», «Дата взятия в работу», «SLA по взятию в работу Атаки»',
+    'h1': '<|chart|figure={fig_h1}|height=640px|>',
+    'h2': '<|chart|figure={fig_h2}|height=640px|>',
+    'h3': '<|chart|figure={fig_h3}|height=640px|>',
 }
 
 if __name__ == '__main__':
     Gui(pages=pages).run(title='СРС 2.4 · EDA-гипотезы', port=5058, use_reloader=False, dark_mode=False,
+        server_config={'socketio': {'manage_session': False}},
                          run_browser='--no-browser' not in sys.argv)

@@ -153,7 +153,7 @@ target, age, day, only_sla = '', '', '', False
 _b = build(F0)
 k_open, k_nov, k_noisy = (fmt(_b['k'][x]) for x in ('open', 'nov', 'noisy'))
 k_crit, k_high, k_old, k_sla = (fmt(_b['k'][x]) + ' ›' for x in ('crit', 'high', 'old', 'sla'))
-outside_txt = (f'Открытых карточек, созданных раньше периода: {_b["outside"]} – их покажет кнопка «Вся очередь».' if _b['outside'] else '')
+outside_txt = (f'Открыто вне периода: {_b["outside"]} · «Вся очередь»' if _b['outside'] else '')
 queue = _b['queue']
 f_age, f_tgt, f_flow, f_types, f_24, f_noise, f_hour = (_b[x] for x in ('f_age', 'f_tgt', 'f_flow', 'f_types', 'f_24', 'f_noise', 'f_hour'))
 n24 = fmt(_b['n24'])
@@ -178,7 +178,7 @@ def refresh(state):
     k = b['k']
     state.k_open, state.k_nov, state.k_noisy = fmt(k['open']), fmt(k['nov']), fmt(k['noisy'])
     state.k_crit, state.k_high, state.k_old, state.k_sla = (fmt(k[x]) + ' ›' for x in ('crit', 'high', 'old', 'sla'))
-    state.outside_txt = (f'Открытых карточек, созданных раньше периода: {b["outside"]} – их покажет кнопка «Вся очередь».'
+    state.outside_txt = (f'Открыто вне периода: {b["outside"]} · «Вся очередь»'
                          if b['outside'] else '')
     state.queue = b['queue']
     state.rb = not state.rb          # пересобрать таблицу, чтобы не осталась старая страница
@@ -282,7 +282,7 @@ SNAP_TXT = SNAP.strftime('%d.%m.%Y %H:%M МСК')
 page = f"""
 # Дежурная смена SOC · снимок {SNAP_TXT}
 <|part|class_name=legend|
-<|text|value=■|class_name=c0|> Критическая &nbsp; <|text|value=■|class_name=c1|> Высокая &nbsp; <|text|value=■|class_name=c2|> Средняя &nbsp; <|text|value=■|class_name=c3|> Низкая &nbsp;·&nbsp; **○** – без вердикта &nbsp;·&nbsp; клик по столбцу или по числу со стрелкой › – фильтр, повторный клик – снять
+<|text|value=■|class_name=c0|> Критическая &nbsp; <|text|value=■|class_name=c1|> Высокая &nbsp; <|text|value=■|class_name=c2|> Средняя &nbsp; <|text|value=■|class_name=c3|> Низкая &nbsp;·&nbsp; **○** – без вердикта &nbsp;·&nbsp; клик применяет фильтр · повторный клик снимает
 |>
 
 <|layout|columns=5 3 4 2 2|gap=10px|class_name=frow|
@@ -311,7 +311,7 @@ page = f"""
 <|{{k_open}}|text|class_name=kv|>
 |>
 <|part|class_name=kpi kpi_red|
-<|text|value=Критических · клик – фильтр|class_name=kt|>
+<|text|value=Критических|class_name=kt|>
 <|button|label={{k_crit}}|on_action=kpi_crit|class_name=kb red|>
 |>
 <|part|class_name=kpi|
@@ -332,62 +332,44 @@ page = f"""
 |>
 |>
 
-<|text|value=Почему KPI-кнопки: число отвечает «сколько и что горит» быстрее графика, а клик по числу фильтрует весь дашборд – критические не теряются среди столбцов (замечание 2.6).|class_name=why|>
-
 <|layout|columns=7 5|gap=20px|
 <|part|
 ### Очередь на разбор
-<|text|value=Что брать первым? Сортировка: критичность → просрочка SLA → возраст. Клик по строке – карточка инцидента.|class_name=q|>
 <|{{queue}}|table|page_size=8|height=330px|rebuild={{rb}}|on_action=open_card|cell_class_name[Критичность]=sev_cell|cell_class_name[SLA]=sla_cell|width[Тип]=170px|width[Цель]=170px|width[№]=70px|>
-<|text|value=Почему таблица: смене нужен номер конкретной карточки и порядок работы, а не распределение. Сортировка и есть ответ «что брать первым»; красным – только критичность и просрочка.|class_name=why|>
 |>
 <|part|
-### Повторяющиеся цели – кандидаты на эскалацию
-<|text|value=Какие хосты фигурируют в нескольких открытых карточках? Клик – отфильтровать по цели.|class_name=q|>
+### Повторяющиеся цели
 <|chart|figure={{f_tgt}}|plot_config={{pc}}|on_click=click_tgt|height=310px|>
-<|text|value=Почему горизонтальные столбцы: длинные имена хостов читаются слева, длина столбца – число открытых карточек, сортировка сразу даёт ранжирование; стек по критичности показывает, насколько опасна цель.|class_name=why|>
 |>
 |>
 
 <|layout|columns=5 10 7|gap=20px|
 <|part|
 ### Возраст очереди
-<|text|value=Где застревают карточки?|class_name=q|>
 <|chart|figure={{f_age}}|plot_config={{pc}}|on_click=click_age|height=230px|>
-<|text|value=Почему столбцы по корзинам: возраст – упорядоченная шкала, и «хвост» очереди виден как самый длинный столбец внизу; стек – из какой критичности состоит хвост.|class_name=why|>
 |>
 <|part|
 ### Приток карточек по дням · <|{{n24}}|text|> за последние 24 ч
-<|text|value=Сколько приходит и какой критичности? Клик по дню – выбрать день.|class_name=q|>
 <|chart|figure={{f_flow}}|plot_config={{pc}}|on_click=click_day|height=250px|>
-<|text|value=Почему столбцы по дням: время идёт по оси X, один столбец – одни сутки (замечание 2.5); стек показывает, меняется ли состав по критичности.|class_name=why|>
 |>
 <|part|
 ### Типы в работе · ○ без вердикта
-<|text|value=Что сейчас в очереди и сколько не разобрано?|class_name=q|>
 <|chart|figure={{f_types}}|plot_config={{pc}}|on_click=click_type|height=300px|>
-<|text|value=Почему горизонтальные столбцы: это ранжирование категорий с длинными названиями; ○ рядом – сколько из них без вердикта, без отдельного графика.|class_name=why|>
 |>
 |>
 
 <|layout|columns=1 1 1|gap=20px|
 <|part|
 ### Типы: последние 24 ч к среднесуточному
-<|text|value=Что выросло сегодня? Синий – 24 ч, серый – среднее за период; подпись – прирост.|class_name=q|>
 <|chart|figure={{f_24}}|plot_config={{pc}}|on_click=click_type|height=300px|>
-<|text|value=Почему парные столбцы: сравниваются два числа по каждому типу – сегодня и обычный день; сортировка по приросту ставит наверх то, что выросло сильнее всего.|class_name=why|>
 |>
 <|part|
 ### Вероятный шум в очереди
-<|text|value=Какие открытые карточки можно разобрать пачкой? Правила, у которых ≥ 95 % вердиктов – FP (гипотеза 1).|class_name=q|>
 <|chart|figure={{f_noise}}|plot_config={{pc}}|height=300px|>
-<|text|value=Почему один серый цвет: «шум» – не угроза, а возможность сэкономить время; столбцы ранжируют правила, которые можно разобрать пачкой.|class_name=why|>
 |>
 <|part|
 ### Поток по часам суток
-<|text|value=Когда смене нужно подкрепление? Карточек в день по часу (МСК); синий – часы, где доля просрочки SLA выше средней за период более чем в 1,2 раза (гипотеза 2).|class_name=q|>
 <|chart|figure={{f_hour}}|plot_config={{pc}}|height=300px|>
-<|text|value=Почему столбцы по часам с одним акцентом: 24 упорядоченных часа читаются как профиль суток; синим выделена одна мысль – часы с повышенной просрочкой SLA.|class_name=why|>
 |>
 |>
 
@@ -399,4 +381,5 @@ page = f"""
 if __name__ == '__main__':
     Gui(page).run(   # стили – app.css рядом со скриптом (Taipy подключает его автоматически)
         title='Дежурная смена SOC', port=5080, use_reloader=False, dark_mode=False,
+        server_config={'socketio': {'manage_session': False}},
         run_browser='--no-browser' not in sys.argv)
